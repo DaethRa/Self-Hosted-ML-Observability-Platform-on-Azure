@@ -2,13 +2,11 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    image: olistmlopsacreiz97zog.azurecr.io/olist-api:latest  # <-- ИЗМЕНЕНО: теперь берем готовый образ
     ports:
       - "8000:8000"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
-    volumes:
-      - ./models:/app/models
     depends_on:
       - mlflow
 
@@ -16,11 +14,10 @@ services:
     image: python:3.13-slim
     ports:
       - "5000:5000"
-    volumes:
-      - ./:/app
     working_dir: /app
     environment:
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+      - STORAGE_ACCOUNT_NAME=${STORAGE_ACCOUNT_NAME}
     command: >
       bash -c "pip install mlflow azure-storage-blob && 
       mlflow server 
