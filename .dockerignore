@@ -5,6 +5,3 @@ __pycache__/
 Datasets/
 mlflow.db
 mlruns/
-models/*.joblib
-models/*.parquet
-models/*.jsonl
