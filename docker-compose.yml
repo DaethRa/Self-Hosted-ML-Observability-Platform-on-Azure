@@ -19,7 +19,16 @@ services:
     volumes:
       - ./:/app
     working_dir: /app
-    command: bash -c "pip install mlflow && mlflow server --backend-store-uri sqlite:///mlflow.db --serve-artifacts --artifacts-destination ./mlruns --host 0.0.0.0 --port 5000 --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000"
+    environment:
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+    command: >
+      bash -c "pip install mlflow azure-storage-blob && 
+      mlflow server 
+      --backend-store-uri sqlite:///mlflow.db 
+      --default-artifact-root wasbs://mlflow-artifacts@${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/ 
+      --host 0.0.0.0 --port 5000 
+      --workers 1 
+      --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000"
 
   prometheus:
     image: prom/prometheus:latest

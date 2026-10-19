@@ -149,3 +149,18 @@ output "acr_password" {
   value = azurerm_container_registry.acr.admin_password
   sensitive = true
 }
+
+resource "azurerm_storage_container" "mlflow_container" {
+  name                  = "mlflow-artifacts"
+  storage_account_name  = azurerm_storage_account.mlflow_storage.name
+  container_access_type = "private"
+}
+
+output "storage_account_name" {
+  value = azurerm_storage_account.mlflow_storage.name
+}
+
+output "storage_connection_string" {
+  value     = azurerm_storage_account.mlflow_storage.primary_connection_string
+  sensitive = true
+}

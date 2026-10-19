@@ -1,6 +1,6 @@
 {
-    "training_date": "2026-10-13T20:27:51.904716",
-    "git_sha": "0b6b2e71dca2bc084be75ee1625068bbfb4793e2",
+    "training_date": "2026-10-19T20:31:45.626254",
+    "git_sha": "c3c517bfe009841cbeecd7aeda48300e7a987c05",
     "seed": 42,
     "optimal_threshold": 0.4335175879396985,
     "metrics_test": {
@@ -9,8 +9,8 @@
         "savings": 11910.0
     },
     "latency_ms": {
-        "p50": 108.81087549933,
-        "p95": 146.17890354875271
+        "p50": 92.8949874942191,
+        "p95": 99.03253399825189
     },
     "features": [
         "max_seller_bad_rate",
