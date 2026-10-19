@@ -42,12 +42,17 @@ def load_model():
             print("Model loaded from local cache.")
             return cached_model
         else:
-            raise RuntimeError("CRITICAL: MLflow is down and no local cache found!")
+            print("CRITICAL: No model found in MLflow or local cache! API will start, but predictions will fail.")
+            return None
 
 pipeline = load_model()
 
-with open(os.path.join(MODEL_DIR, 'metadata.json'), 'r') as f:
-    metadata = json.load(f)
+try:
+    with open(os.path.join(MODEL_DIR, 'metadata.json'), 'r') as f:
+        metadata = json.load(f)
+except FileNotFoundError:
+    metadata = {}
+    
 OPTIMAL_THRESHOLD = metadata.get("optimal_threshold", 0.5)
 
 app = FastAPI(title="Olist Review Predictor", version=metadata.get("git_sha", "unknown")[:7])
@@ -103,6 +108,12 @@ def predict(df: pd.DataFrame) -> dict:
 
 @app.post("/predict")
 def predict_endpoint(payload: OrderPayload):
+    if pipeline is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Model is not loaded yet. Train and register a model in MLflow first."
+        )
+
     try:
         data_dict = payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict()
         df = pd.DataFrame([data_dict])
@@ -126,7 +137,10 @@ def predict_endpoint(payload: OrderPayload):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "model_loaded": pipeline is not None
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
