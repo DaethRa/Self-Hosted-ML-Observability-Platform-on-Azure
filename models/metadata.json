@@ -1,0 +1,47 @@
+{
+    "training_date": "2026-10-13T20:27:51.904716",
+    "git_sha": "0b6b2e71dca2bc084be75ee1625068bbfb4793e2",
+    "seed": 42,
+    "optimal_threshold": 0.4335175879396985,
+    "metrics_test": {
+        "roc_auc": 0.6859150057221096,
+        "pr_auc": 0.3108549468862931,
+        "savings": 11910.0
+    },
+    "latency_ms": {
+        "p50": 108.81087549933,
+        "p95": 146.17890354875271
+    },
+    "features": [
+        "max_seller_bad_rate",
+        "max_cat_bad_rate",
+        "freight_ratio",
+        "approval_delay",
+        "avg_photos",
+        "avg_desc_len",
+        "delay_days_positive",
+        "log_total_price",
+        "log_weight",
+        "log_volume",
+        "total_freight",
+        "max_installments",
+        "avg_item_price",
+        "financial_diff",
+        "log_product_density",
+        "log_distance_km",
+        "items_count",
+        "unique_products",
+        "unique_sellers",
+        "payment_count",
+        "is_delayed",
+        "is_split_order",
+        "is_weekend_purchase",
+        "is_cross_state",
+        "is_returning_customer",
+        "customer_state"
+    ],
+    "versions": {
+        "xgboost": "3.3.0",
+        "pandas": "2.3.3"
+    }
+}

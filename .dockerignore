@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.git/
+.ipynb_checkpoints/
+Datasets/
+mlflow.db
+mlruns/
+models/*.joblib
+models/*.parquet
+models/*.jsonl
