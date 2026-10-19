@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   api:
-    image: olistmlopsacreiz97zog.azurecr.io/olist-api:latest  # <-- ИЗМЕНЕНО: теперь берем готовый образ
+    image: olistmlopsacreiz97zog.azurecr.io/olist-api:latest
     ports:
       - "8000:8000"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
     depends_on:
       - mlflow
-
   mlflow:
     image: python:3.13-slim
     ports:
