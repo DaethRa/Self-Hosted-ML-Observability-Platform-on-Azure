@@ -3,6 +3,9 @@ import joblib
 import mlflow
 from mlflow.tracking import MlflowClient
 import time
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 mlflow_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow:5000")
 mlflow.set_tracking_uri(mlflow_uri)
