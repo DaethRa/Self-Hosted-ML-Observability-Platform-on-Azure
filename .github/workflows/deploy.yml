@@ -15,12 +15,12 @@ jobs:
     - name: Login to Azure Container Registry
       uses: azure/docker-login@v1
       with:
-        login-server: ${{ secrets.olistmlopsacroz4tr8lh.azurecr.io }}
-        username: ${{ secrets.olistmlopsacroz4tr8lh }}
-        password: ${{ secrets.EhiTSiNswv33CRsidyPVrU56fny52BLUAaIMmVb3aYk2QvJKcra1JQQJ99CJAC32SMSEqg7NAAACAZCR4U6T }}
+        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
 
     - name: Build and Push to ACR
       run: |
-        docker build -t ${{ secrets.olistmlopsacroz4tr8lh.azurecr.io }}/olist-api:latest .
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/olist-api:latest .
         
-        docker push ${{ secrets.olistmlopsacroz4tr8lh.azurecr.io }}/olist-api:latest
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/olist-api:latest
