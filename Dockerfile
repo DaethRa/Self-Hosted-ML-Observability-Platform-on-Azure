@@ -11,7 +11,7 @@ RUN mkdir -p /app/models && chown -R appuser:appuser /app/models
 
 COPY src/ /app/src/
 
-COPY models/metadata.json /app/models/metadata.json
+COPY models/ /app/models/
 
 USER appuser
 
