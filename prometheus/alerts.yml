@@ -1,0 +1,79 @@
+groups:
+  - name: mlops_alerts
+    interval: 15s
+    rules:
+      - alert: APIUnavailable
+        expr: up{job="olist_api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "FastAPI is unavailable"
+
+      - alert: DriftExporterUnavailable
+        expr: up{job="drift_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Drift exporter is unavailable"
+
+      - alert: HighFeatureDrift
+        expr: ml_feature_drift_score{method="psi"} > 0.5 and on() (ml_drift_ready == 1)
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High PSI drift: {{ $labels.feature }}"
+          description: "PSI is {{ $value }}"
+
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            100 * (
+              1 -
+              node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}
+              /
+              node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}
+            )
+          ) > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root disk usage exceeds 85%"
+
+      - alert: DriftMetricsStale
+        expr: time() - ml_drift_last_success_timestamp_seconds > 180
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drift metrics have not been refreshed"
+
+      - alert: HighAPIErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="olist_api",status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(http_requests_total{job="olist_api"}[5m])), 0.001)
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API error rate exceeds 5%"
+
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(http_request_duration_seconds_bucket{job="olist_api"}[5m])
+            )
+          ) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency exceeds 1 second"
