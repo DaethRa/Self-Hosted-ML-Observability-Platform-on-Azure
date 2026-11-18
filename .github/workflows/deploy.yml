@@ -82,7 +82,11 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/mlops_deploy
           printf '%s\n' "$SSH_HOST_KEY" > ~/.ssh/known_hosts
 
-          chmod 600 ~/.ssh/mlops_deploy ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/mlops_deploy
+          chmod 600 ~/.ssh/known_hosts
+
+          ssh-keygen -y -f ~/.ssh/mlops_deploy > /dev/null
+          echo "SSH private key validated successfully"
 
       - name: Upload deployment script
         env:
