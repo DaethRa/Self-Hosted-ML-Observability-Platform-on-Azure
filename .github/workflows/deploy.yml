@@ -56,3 +56,51 @@ jobs:
         run: |
           docker tag olist-api:ci "$ACR_SERVER/olist-api:${GITHUB_SHA}"
           docker push "$ACR_SERVER/olist-api:${GITHUB_SHA}"
+
+
+  deploy:
+    name: Deploy to Azure VM
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: mlops-production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          SSH_HOST_KEY: ${{ secrets.VM_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/mlops_deploy
+          printf '%s\n' "$SSH_HOST_KEY" > ~/.ssh/known_hosts
+
+          chmod 600 ~/.ssh/mlops_deploy ~/.ssh/known_hosts
+
+      - name: Upload deployment script
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          scp -i ~/.ssh/mlops_deploy \
+            -o StrictHostKeyChecking=yes \
+            scripts/deploy.sh \
+            "azureuser@${VM_HOST}:/home/azureuser/deploy.sh"
+
+      - name: Deploy images
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          ACR_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+        run: |
+          ssh -i ~/.ssh/mlops_deploy \
+            -o StrictHostKeyChecking=yes \
+            "azureuser@${VM_HOST}" \
+            bash /home/azureuser/deploy.sh \
+            "$ACR_SERVER" "$GITHUB_SHA"
+
