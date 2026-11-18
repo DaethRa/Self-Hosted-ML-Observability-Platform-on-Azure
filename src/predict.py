@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, root_validator
 from typing import List, Optional
 from datetime import datetime
 import uvicorn
+from src.monitoring import extract_features_from_enriched, log_prediction
 
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Histogram
@@ -93,18 +94,27 @@ class OrderPayload(BaseModel):
             raise ValueError("Predictions require delivered orders.")
         return values
 
-def predict(df: pd.DataFrame) -> dict:
-    probability = pipeline.predict_proba(df)[:, 1][0]
+def predict(df: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
+    # 1. Generate features once
+    enriched = pipeline.named_steps["enricher"].transform(df)
+
+    # 2. Predict using the remaining fitted pipeline
+    probability = float(
+        pipeline.named_steps["tail"].predict_proba(enriched)[0, 1]
+    )
+
     is_bad = bool(probability >= OPTIMAL_THRESHOLD)
 
     PREDICTION_PROBABILITY.observe(probability)
-    
-    return {
-        "probability": float(probability),
+
+    result = {
+        "probability": probability,
         "is_bad_review": is_bad,
         "threshold": OPTIMAL_THRESHOLD,
-        "model_version": metadata.get("git_sha", "unknown")[:7]
+        "model_version": metadata.get("git_sha", "unknown")[:7],
     }
+
+    return result, enriched
 
 @app.post("/predict")
 def predict_endpoint(payload: OrderPayload):
@@ -124,8 +134,19 @@ def predict_endpoint(payload: OrderPayload):
             if col in df.columns:
                 df[col] = pd.to_datetime(df[col])
                 
-        result = predict(df)
-        
+        result, enriched = predict(df)
+
+        try:
+            features = extract_features_from_enriched(enriched)
+
+            log_prediction(
+                order_id=payload.order_id,
+                features=features,
+                result=result,
+            )
+        except Exception as log_error:
+            print(f"Monitoring logging failed: {log_error}")
+
         return {
             "order_id": payload.order_id,
             "prediction": result

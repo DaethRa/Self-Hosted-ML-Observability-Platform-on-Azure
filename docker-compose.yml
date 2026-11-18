@@ -1,4 +1,14 @@
 services:
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+
   mlflow:
     image: python:3.13-slim
     ports:
@@ -14,7 +24,11 @@ services:
       mlflow server 
       --backend-store-uri sqlite:///mlflow.db 
       --default-artifact-root wasbs://mlflow-artifacts@${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/ 
-      --host 0.0.0.0 --port 5000 --workers 1"
+      --host 0.0.0.0 
+      --port 5000 
+      --workers 1 
+      --serve-artifacts 
+      --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000"
 
   seed:
     image: ${ACR_LOGIN_SERVER}/olist-api:latest
@@ -26,17 +40,22 @@ services:
     command: python src/seed_model.py
 
   api:
-    image: ${ACR_LOGIN_SERVER}/olist-api:latest
+    image: ${ACR_LOGIN_SERVER}/olist-api:monitoring-v1
     ports:
       - "8000:8000"
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+    - MLFLOW_TRACKING_URI=http://mlflow:5000
+    - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+    - PREDICTION_EVENTS_PATH=/app/monitoring/prediction_events.jsonl
+
+    volumes:
+      - monitoring_data:/app/monitoring
     depends_on:
       seed:
         condition: service_completed_successfully
       mlflow:
         condition: service_started
+
 
   prometheus:
     image: prom/prometheus:latest
@@ -44,6 +63,7 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
 
   grafana:
     image: grafana/grafana:latest
@@ -51,6 +71,46 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  drift-exporter:
+    image: ${ACR_LOGIN_SERVER}/olist-api:monitoring-v4
+    command: python -m src.drift_exporter
+    
+    environment:
+      - REFERENCE_DATA_PATH=/app/models/reference.parquet
+      - PREDICTION_EVENTS_PATH=/app/monitoring/prediction_events.jsonl
+      - DRIFT_MIN_SAMPLES=100
+      - DRIFT_WINDOW_SIZE=1000
+      - DRIFT_INTERVAL=60
+      - LABELS_PATH=/app/models/labels.parquet
+      - SIMULATED_LABEL_DATE=2018-06-02
+    volumes:
+      - monitoring_data:/app/monitoring:ro
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    volumes:
+      - ./alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
+    restart: unless-stopped
+
+  alert-webhook:
+    image: python:3.13-alpine
+    command: ["python", "-u", "/app/receiver.py"]
+    volumes:
+      - ./alerting/receiver.py:/app/receiver.py:ro
+    restart: unless-stopped
 
 volumes:
   mlflow_data:
+  monitoring_data:

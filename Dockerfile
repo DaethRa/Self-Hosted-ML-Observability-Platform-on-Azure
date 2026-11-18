@@ -7,7 +7,8 @@ RUN useradd -m -s /bin/bash appuser
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN mkdir -p /app/models && chown -R appuser:appuser /app/models
+RUN mkdir -p /app/models /app/monitoring && \
+    chown -R appuser:appuser /app/models /app/monitoring
 
 COPY src/ /app/src/
 
