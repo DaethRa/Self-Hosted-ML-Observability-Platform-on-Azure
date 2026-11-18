@@ -1,26 +1,58 @@
-name: Build and Push Docker Image
+
+name: ML Observability CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Login to Azure Container Registry
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
-    - name: Build and Push to ACR
-      run: |
-        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/olist-api:latest .
-        
-        docker push ${{ secrets.ACR_LOGIN_SERVER }}/olist-api:latest
+      - name: Check Python syntax
+        run: |
+          python -m compileall -q src
+
+      - name: Check required project files
+        run: |
+          test -f Dockerfile
+          test -f requirements.txt
+          test -f src/predict.py
+          test -f src/drift_exporter.py
+          test -f src/performance.py
+          test -f prometheus/alerts.yml
+
+      - name: Build Docker image for validation
+        run: |
+          docker build -t olist-api:ci .
+
+      - name: Login to Azure Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Tag and push Docker image
+        if: github.event_name != 'pull_request'
+        env:
+          ACR_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+        run: |
+          docker tag olist-api:ci "$ACR_SERVER/olist-api:${GITHUB_SHA}"
+          docker push "$ACR_SERVER/olist-api:${GITHUB_SHA}"
